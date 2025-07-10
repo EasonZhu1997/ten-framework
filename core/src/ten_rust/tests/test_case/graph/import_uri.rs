@@ -10,10 +10,14 @@ mod tests {
 
     use tempfile::tempdir;
 
-    use ten_rust::graph::{graph_info::GraphInfo, node::GraphNodeType, Graph};
+    use ten_rust::graph::{
+        graph_info::{GraphContent, GraphInfo},
+        node::GraphNode,
+        Graph,
+    };
 
-    #[test]
-    fn test_graph_import_uri() {
+    #[tokio::test]
+    async fn test_graph_import_uri() {
         // Create a temporary graph file.
         let temp_dir = tempdir().unwrap();
         let graph_file_path = temp_dir.path().join("test_graph.json");
@@ -57,73 +61,75 @@ mod tests {
             name: Some("test_graph".to_string()),
             auto_start: Some(true),
             singleton: None,
-            graph: Graph {
-                nodes: Vec::new(),
-                connections: None,
-                exposed_messages: None,
-                exposed_properties: None,
+            graph: GraphContent {
+                import_uri: Some(import_uri),
+                graph: Graph {
+                    nodes: Vec::new(),
+                    connections: None,
+                    exposed_messages: None,
+                    exposed_properties: None,
+                },
             },
-            import_uri: Some(import_uri),
             app_base_dir: None,
             belonging_pkg_type: None,
             belonging_pkg_name: None,
         };
 
         // Validate and complete (this should load the graph from import_uri).
-        graph_info.validate_and_complete_and_flatten().unwrap();
+        graph_info.validate_and_complete_and_flatten().await.unwrap();
 
         // Verify that the graph was loaded correctly.
-        assert_eq!(graph_info.graph.nodes.len(), 1);
-        assert_eq!(graph_info.graph.nodes[0].type_, GraphNodeType::Extension);
-        assert_eq!(
-            graph_info.graph.nodes[0].addon,
-            Some("test_addon".to_string())
-        );
-        assert!(graph_info.graph.connections.is_some());
-        let connections = graph_info.graph.connections.as_ref().unwrap();
+        assert_eq!(graph_info.graph.nodes().len(), 1);
+
+        if let GraphNode::Extension { content } = &graph_info.graph.nodes()[0] {
+            assert_eq!(content.addon, "test_addon");
+        } else {
+            panic!("Unexpected non-extension node in graph");
+        }
+
+        assert!(graph_info.graph.connections().is_some());
+        let connections = graph_info.graph.connections().as_ref().unwrap();
         assert_eq!(connections.len(), 1);
         assert_eq!(connections[0].loc.extension, Some("test_ext".to_string()));
     }
 
-    #[test]
-    fn test_import_uri_mutual_exclusion_with_nodes() {
-        use ten_rust::graph::node::{GraphNode, GraphNodeType};
-
+    #[tokio::test]
+    async fn test_import_uri_mutual_exclusion_with_nodes() {
         // Create a GraphInfo with both import_uri and nodes - this should fail
         let mut graph_info = GraphInfo {
             name: Some("test_graph".to_string()),
             auto_start: Some(true),
             singleton: None,
-            graph: Graph {
-                nodes: vec![GraphNode {
-                    type_: GraphNodeType::Extension,
-                    name: "test_ext".to_string(),
-                    addon: Some("test_addon".to_string()),
-                    extension_group: Some("test_group".to_string()),
-                    app: None,
-                    property: None,
-                    import_uri: None,
-                }],
-                connections: None,
-                exposed_messages: None,
-                exposed_properties: None,
+            graph: GraphContent {
+                import_uri: Some("test_uri".to_string()),
+                graph: Graph {
+                    nodes: vec![GraphNode::new_extension_node(
+                        "test_ext".to_string(),
+                        "test_addon".to_string(),
+                        Some("test_group".to_string()),
+                        None,
+                        None,
+                    )],
+                    connections: None,
+                    exposed_messages: None,
+                    exposed_properties: None,
+                },
             },
-            import_uri: Some("test_uri".to_string()),
             app_base_dir: None,
             belonging_pkg_type: None,
             belonging_pkg_name: None,
         };
 
         // This should fail due to mutual exclusion
-        let result = graph_info.validate_and_complete_and_flatten();
+        let result = graph_info.validate_and_complete_and_flatten().await;
         assert!(result.is_err());
         assert!(result.unwrap_err().to_string().contains(
             "When 'import_uri' is specified, 'nodes' field must not be present"
         ));
     }
 
-    #[test]
-    fn test_import_uri_mutual_exclusion_with_connections() {
+    #[tokio::test]
+    async fn test_import_uri_mutual_exclusion_with_connections() {
         use ten_rust::graph::connection::{
             GraphConnection, GraphLoc, GraphMessageFlow,
         };
@@ -134,33 +140,37 @@ mod tests {
             name: Some("test_graph".to_string()),
             auto_start: Some(true),
             singleton: None,
-            graph: Graph {
-                nodes: Vec::new(),
-                connections: Some(vec![GraphConnection {
-                    loc: GraphLoc {
-                        app: None,
-                        extension: Some("test_ext".to_string()),
-                        subgraph: None,
-                    },
-                    cmd: Some(vec![GraphMessageFlow {
-                        name: "test_cmd".to_string(),
-                        dest: vec![],
+            graph: GraphContent {
+                import_uri: Some("test_uri".to_string()),
+                graph: Graph {
+                    nodes: Vec::new(),
+                    connections: Some(vec![GraphConnection {
+                        loc: GraphLoc {
+                            app: None,
+                            extension: Some("test_ext".to_string()),
+                            subgraph: None,
+                            selector: None,
+                        },
+                        cmd: Some(vec![GraphMessageFlow::new(
+                            "test_cmd".to_string(),
+                            vec![],
+                            vec![],
+                        )]),
+                        data: None,
+                        audio_frame: None,
+                        video_frame: None,
                     }]),
-                    data: None,
-                    audio_frame: None,
-                    video_frame: None,
-                }]),
-                exposed_messages: None,
-                exposed_properties: None,
+                    exposed_messages: None,
+                    exposed_properties: None,
+                },
             },
-            import_uri: Some("test_uri".to_string()),
             app_base_dir: None,
             belonging_pkg_type: None,
             belonging_pkg_name: None,
         };
 
         // This should fail due to mutual exclusion
-        let result = graph_info.validate_and_complete_and_flatten();
+        let result = graph_info.validate_and_complete_and_flatten().await;
         assert!(result.is_err());
         assert!(result.unwrap_err().to_string().contains(
             "When 'import_uri' is specified, 'connections' field must not be \
@@ -168,8 +178,8 @@ mod tests {
         ));
     }
 
-    #[test]
-    fn test_import_uri_mutual_exclusion_with_exposed_messages() {
+    #[tokio::test]
+    async fn test_import_uri_mutual_exclusion_with_exposed_messages() {
         use ten_rust::graph::{GraphExposedMessage, GraphExposedMessageType};
 
         // Create a GraphInfo with both import_uri and exposed_messages - this
@@ -178,25 +188,27 @@ mod tests {
             name: Some("test_graph".to_string()),
             auto_start: Some(true),
             singleton: None,
-            graph: Graph {
-                nodes: Vec::new(),
-                connections: None,
-                exposed_messages: Some(vec![GraphExposedMessage {
-                    msg_type: GraphExposedMessageType::CmdIn,
-                    name: "test_msg".to_string(),
-                    extension: Some("test_ext".to_string()),
-                    subgraph: None,
-                }]),
-                exposed_properties: None,
+            graph: GraphContent {
+                import_uri: Some("test_uri".to_string()),
+                graph: Graph {
+                    nodes: Vec::new(),
+                    connections: None,
+                    exposed_messages: Some(vec![GraphExposedMessage {
+                        msg_type: GraphExposedMessageType::CmdIn,
+                        name: "test_msg".to_string(),
+                        extension: Some("test_ext".to_string()),
+                        subgraph: None,
+                    }]),
+                    exposed_properties: None,
+                },
             },
-            import_uri: Some("test_uri".to_string()),
             app_base_dir: None,
             belonging_pkg_type: None,
             belonging_pkg_name: None,
         };
 
         // This should fail due to mutual exclusion
-        let result = graph_info.validate_and_complete_and_flatten();
+        let result = graph_info.validate_and_complete_and_flatten().await;
         assert!(result.is_err());
         assert!(result.unwrap_err().to_string().contains(
             "When 'import_uri' is specified, 'exposed_messages' field must \
@@ -204,8 +216,8 @@ mod tests {
         ));
     }
 
-    #[test]
-    fn test_import_uri_mutual_exclusion_with_exposed_properties() {
+    #[tokio::test]
+    async fn test_import_uri_mutual_exclusion_with_exposed_properties() {
         use ten_rust::graph::GraphExposedProperty;
 
         // Create a GraphInfo with both import_uri and exposed_properties - this
@@ -214,24 +226,26 @@ mod tests {
             name: Some("test_graph".to_string()),
             auto_start: Some(true),
             singleton: None,
-            graph: Graph {
-                nodes: Vec::new(),
-                connections: None,
-                exposed_messages: None,
-                exposed_properties: Some(vec![GraphExposedProperty {
-                    extension: Some("test_ext".to_string()),
-                    subgraph: None,
-                    name: "test_prop".to_string(),
-                }]),
+            graph: GraphContent {
+                import_uri: Some("test_uri".to_string()),
+                graph: Graph {
+                    nodes: Vec::new(),
+                    connections: None,
+                    exposed_messages: None,
+                    exposed_properties: Some(vec![GraphExposedProperty {
+                        extension: Some("test_ext".to_string()),
+                        subgraph: None,
+                        name: "test_prop".to_string(),
+                    }]),
+                },
             },
-            import_uri: Some("test_uri".to_string()),
             app_base_dir: None,
             belonging_pkg_type: None,
             belonging_pkg_name: None,
         };
 
         // This should fail due to mutual exclusion
-        let result = graph_info.validate_and_complete_and_flatten();
+        let result = graph_info.validate_and_complete_and_flatten().await;
         assert!(result.is_err());
         assert!(result.unwrap_err().to_string().contains(
             "When 'import_uri' is specified, 'exposed_properties' field must \
@@ -239,8 +253,8 @@ mod tests {
         ));
     }
 
-    #[test]
-    fn test_import_uri_without_conflicting_fields_succeeds() {
+    #[tokio::test]
+    async fn test_import_uri_without_conflicting_fields_succeeds() {
         // Create a temporary graph file.
         let temp_dir = tempdir().unwrap();
         let graph_file_path = temp_dir.path().join("test_graph.json");
@@ -269,24 +283,26 @@ mod tests {
             name: Some("test_graph".to_string()),
             auto_start: Some(true),
             singleton: None,
-            graph: Graph {
-                nodes: Vec::new(),
-                connections: None,
-                exposed_messages: None,
-                exposed_properties: None,
+            graph: GraphContent {
+                import_uri: Some(import_uri),
+                graph: Graph {
+                    nodes: Vec::new(),
+                    connections: None,
+                    exposed_messages: None,
+                    exposed_properties: None,
+                },
             },
-            import_uri: Some(import_uri),
             app_base_dir: None,
             belonging_pkg_type: None,
             belonging_pkg_name: None,
         };
 
         // This should succeed
-        let result = graph_info.validate_and_complete_and_flatten();
+        let result = graph_info.validate_and_complete_and_flatten().await;
         assert!(result.is_ok());
 
         // Verify that the graph was loaded from import_uri
-        assert_eq!(graph_info.graph.nodes.len(), 1);
-        assert_eq!(graph_info.graph.nodes[0].name, "test_ext");
+        assert_eq!(graph_info.graph.nodes().len(), 1);
+        assert_eq!(graph_info.graph.nodes()[0].get_name(), "test_ext");
     }
 }
