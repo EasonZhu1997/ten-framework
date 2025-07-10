@@ -134,7 +134,7 @@ export default function Action(props: { className?: string }) {
         <div className="hidden md:block">
           <span className="text-sm font-bold">Description</span>
           <span className="ml-2 text-xs text-muted-foreground whitespace-nowrap">
-            A Realtime Conversational AI Agent powered by TEN
+            你好，TEN Framework！多模态智能体实时对话系统
           </span>
 
         </div>

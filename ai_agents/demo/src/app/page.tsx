@@ -9,6 +9,17 @@ import Action from "@/components/Layout/Action"
 // import ChatCard from "@/components/Chat/ChatCard"
 import AuthInitializer from "@/components/authInitializer"
 import { cn } from "@/lib/utils"
+import { Metadata } from "next"
+
+export const metadata: Metadata = {
+  title: "测试标题页",
+  description:
+    "TEN Agent is an open-source multimodal AI agent that can speak, see, and access a knowledge base(RAG).",
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: "black",
+  },
+}
 
 const DynamicRTCCard = dynamic(() => import("@/components/Dynamic/RTCCard"), {
   ssr: false,
