@@ -7,7 +7,7 @@ import { useAppSelector, EMobileActiveTab, useIsCompactLayout } from "@/common";
 import Header from "@/components/Layout/Header";
 import Action from "@/components/Layout/Action";
 import { cn } from "@/lib/utils";
-import Avatar from "@/components/Agent/AvatarTrulience";
+import VideoAvatar from "@/components/Agent/AvatarTrulience";
 import React from "react";
 import { IRtcUser, IUserTracks } from "@/manager";
 import { IMicrophoneAudioTrack } from "agora-rtc-sdk-ng";
@@ -44,7 +44,7 @@ export default function Home() {
     }
     if (user.audioTrack) {
       setRemoteUser(user)
-    } 
+    }
   }
 
   return (
@@ -86,7 +86,7 @@ export default function Home() {
                 ["hidden md:block"]: mobileActiveTab === EMobileActiveTab.CHAT,
               }
             )}>
-              <Avatar audioTrack={remoteuser?.audioTrack} />
+              <VideoAvatar audioTrack={remoteuser?.audioTrack} />
             </div>
           )}
 
