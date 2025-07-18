@@ -29,6 +29,7 @@ import { rtmManager } from "@/manager/rtm";
 import { type IRTMTextItem, EMessageDataType, EMessageType, ERTMTextType } from "@/types";
 import { RemoteGraphSelect } from "@/components/Chat/ChatCfgGraphSelect";
 import { RemoteModuleCfgSheet } from "@/components/Chat/ChatCfgModuleSelect";
+import { useEffect } from "react";
 
 export default function ChatCard(props: { className?: string }) {
   const { className } = props;
@@ -41,28 +42,39 @@ export default function ChatCard(props: { className?: string }) {
   const agentConnected = useAppSelector((state) => state.global.agentConnected);
   const options = useAppSelector((state) => state.global.options);
 
-  const disableInputMemo = React.useMemo(() => {
-    return (
-      !options.channel ||
-      !options.userId ||
-      !options.appId ||
-      !options.token ||
-      !rtmConnected ||
-      !agentConnected
-    );
-  }, [
-    options.channel,
-    options.userId,
-    options.appId,
-    options.token,
-    rtmConnected,
-    agentConnected,
-  ]);
-
   // const chatItems = genRandomChatList(10)
   const chatRef = React.useRef(null);
 
   useAutoScroll(chatRef);
+
+  useEffect(() => {
+    // 主动初始化 RTM
+    if (options.channel && options.userId && options.appId && options.token) {
+      console.log('[RTM] init with', options);
+      rtmManager.init({
+        channel: options.channel,
+        userId: options.userId,
+        appId: options.appId,
+        token: options.token,
+      });
+    }
+    const handler = (msg: IRTMTextItem) => {
+      console.log('[RTM] rtmMessage event', msg);
+      onTextChanged(msg);
+      // 只要是 AI 回复（AGENT），就触发 ai-talking 事件
+      if (msg.type === ERTMTextType.TRANSCRIBE && msg.stream_id !== String(options.userId)) {
+        window.dispatchEvent(new Event('ai-talking'));
+      }
+      // 兼容：如果 type 是 AGENT 回复也触发
+      if (msg.type === ERTMTextType.INPUT_TEXT && msg.stream_id !== String(options.userId)) {
+        window.dispatchEvent(new Event('ai-talking'));
+      }
+    };
+    rtmManager.on("rtmMessage", handler);
+    return () => {
+      rtmManager.off("rtmMessage", handler);
+    };
+  }, [options]);
 
   const onTextChanged = (text: IRTMTextItem) => {
     console.log("[rtm] onTextChanged", text);
@@ -99,10 +111,21 @@ export default function ChatCard(props: { className?: string }) {
 
   const handleInputSubmit = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
-    if (!inputValue || disableInputMemo) {
+    if (!inputValue) {
       return;
     }
-    rtmManager.sendText(inputValue);
+    const msg = {
+      userId: options.userId,
+      text: inputValue,
+      type: EMessageType.USER,
+      data_type: EMessageDataType.TEXT,
+      isFinal: true,
+      time: Date.now(),
+    };
+    console.log('[RTM] sendText', inputValue, msg);
+    rtmManager.sendText(inputValue, ERTMTextType.TRANSCRIBE);
+    // 本地立即显示
+    dispatch(addChatItem(msg));
     setInputValue("");
   };
 
@@ -116,34 +139,21 @@ export default function ChatCard(props: { className?: string }) {
             <MessageList />
           </div>
           {/* Input area */}
-          <div
-            className={cn("border-t pt-4", {
-              ["hidden"]: !graphName.includes("rtm"), // TODO: TMP use rtm key word
-            })}
-          >
+          <div className="border-t pt-4">
             <form onSubmit={handleInputSubmit} className="flex items-center space-x-2">
               <input
                 type="text"
-                disabled={disableInputMemo}
                 placeholder="Type a message..."
                 value={inputValue}
                 onChange={handleInputChange}
-                className={cn(
-                  "flex-grow rounded-md border bg-background p-1.5 focus:outline-none focus:ring-1 focus:ring-ring",
-                  {
-                    ["cursor-not-allowed"]: disableInputMemo,
-                  }
-                )}
+                className="flex-grow rounded-md border bg-background p-1.5 focus:outline-none focus:ring-1 focus:ring-ring"
               />
               <Button
                 type="submit"
-                disabled={disableInputMemo || inputValue.length === 0}
+                disabled={inputValue.length === 0}
                 size="icon"
                 variant="outline"
-                className={cn("bg-transparent", {
-                  ["opacity-50"]: disableInputMemo || inputValue.length === 0,
-                  ["cursor-not-allowed"]: disableInputMemo,
-                })}
+                className="bg-transparent"
               >
                 <Send className="h-4 w-4" />
                 <span className="sr-only">Send message</span>

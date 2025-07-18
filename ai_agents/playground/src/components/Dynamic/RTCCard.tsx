@@ -96,12 +96,12 @@ export default function RTCCard(props: { className?: string }) {
   const onRemoteUserChanged = (user: IRtcUser) => {
     console.log("[rtc] onRemoteUserChanged", user)
     if (useTrulienceAvatar) {
-      // trulience SDK will play audio in synch with mouth
-      user.audioTrack?.stop();
+      // 让 AI 语音正常播放
+      user.audioTrack?.play();
     }
     if (user.audioTrack) {
       setRemoteUser(user)
-    } 
+    }
   }
 
   const onLocalTracksChanged = (tracks: IUserTracks) => {
@@ -137,7 +137,7 @@ export default function RTCCard(props: { className?: string }) {
         {useTrulienceAvatar ? (
           !avatarInLargeWindow ? (
             <div className="h-60 w-full p-1">
-              <Avatar localAudioTrack={audioTrack} audioTrack={remoteuser?.audioTrack} />
+              <Avatar audioTrack={remoteuser?.audioTrack} />
             </div>
           ) : (
             !isCompactLayout &&
@@ -146,7 +146,7 @@ export default function RTCCard(props: { className?: string }) {
             />
           )
         ) : (
-          <AgentView  audioTrack={remoteuser?.audioTrack} />
+          <AgentView audioTrack={remoteuser?.audioTrack} />
         )}
       </div>
 

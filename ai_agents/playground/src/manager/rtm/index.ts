@@ -110,12 +110,12 @@ export class RtmManager extends AGEventEmitter<IRtmEvents> {
     console.log("[RTM] [TRTMPresenceEvent] RAW", JSON.stringify(e))
   }
 
-  async sendText(text: string) {
+  async sendText(text: string, type: ERTMTextType = ERTMTextType.TRANSCRIBE) {
     const msg: IRTMTextItem = {
       is_final: true,
       ts: Date.now(),
       text,
-      type: ERTMTextType.INPUT_TEXT,
+      type,
       stream_id: String(this.userId),
     }
     await this._client?.publish(this.channel, JSON.stringify(msg), {

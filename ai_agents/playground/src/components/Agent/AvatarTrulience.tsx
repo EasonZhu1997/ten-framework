@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react"
+import React, { useState, useRef, useEffect } from "react"
 import { IMicrophoneAudioTrack } from "agora-rtc-sdk-ng"
 import { cn } from "@/lib/utils";
 import { Maximize, Minimize } from "lucide-react";
@@ -12,8 +12,59 @@ interface AvatarProps {
 
 export default function VideoAvatar({ audioTrack }: AvatarProps) {
   // 判断是否在说话
-  const isTalking = !!(audioTrack && (audioTrack as any).isPlaying)
+  const [isTalking, setIsTalking] = useState(false);
   const [fullscreen, setFullscreen] = useState(false)
+  const talkVideoRef = useRef<HTMLVideoElement>(null);
+  const standVideoRef = useRef<HTMLVideoElement>(null);
+  const analyserRef = useRef<AnalyserNode | null>(null);
+  const audioContextRef = useRef<AudioContext | null>(null);
+  const sourceRef = useRef<MediaStreamAudioSourceNode | null>(null);
+
+  useEffect(() => {
+    if (!audioTrack) return;
+    const mediaStreamTrack = audioTrack.getMediaStreamTrack();
+    if (!mediaStreamTrack) return;
+    const audioContext = new (window.AudioContext || (window as any).webkitAudioContext)();
+    const mediaStream = new MediaStream([mediaStreamTrack]);
+    const source = audioContext.createMediaStreamSource(mediaStream);
+    const analyser = audioContext.createAnalyser();
+    analyser.fftSize = 512;
+    source.connect(analyser);
+    analyserRef.current = analyser;
+    audioContextRef.current = audioContext;
+    sourceRef.current = source;
+
+    let animationId: number;
+    const checkVolume = () => {
+      const dataArray = new Uint8Array(analyser.frequencyBinCount);
+      analyser.getByteFrequencyData(dataArray);
+      // 简单取最大值判断是否在说话
+      const max = Math.max(...dataArray);
+      const threshold = 20; // 阈值可调整
+      setIsTalking(max > threshold);
+      animationId = requestAnimationFrame(checkVolume);
+    };
+    checkVolume();
+
+    return () => {
+      if (animationId) cancelAnimationFrame(animationId);
+      analyser.disconnect();
+      source.disconnect();
+      audioContext.close();
+    };
+  }, [audioTrack]);
+
+  useEffect(() => {
+    // 切换时让当前video从头播放
+    if (isTalking && talkVideoRef.current) {
+      talkVideoRef.current.currentTime = 0;
+      talkVideoRef.current.play().catch(() => { });
+    }
+    if (!isTalking && standVideoRef.current) {
+      standVideoRef.current.currentTime = 0;
+      standVideoRef.current.play().catch(() => { });
+    }
+  }, [isTalking, fullscreen]);
 
   const avatarContent = (
     <div className={cn(
@@ -31,18 +82,51 @@ export default function VideoAvatar({ audioTrack }: AvatarProps) {
       >
         {fullscreen ? <Minimize className="text-white" size={24} /> : <Maximize className="text-white" size={24} />}
       </button>
+      {/* 双video方案，两个video都渲染，只切显隐 */}
       <video
-        src={isTalking ? "/talk.mp4" : "/stand.mp4"}
+        ref={talkVideoRef}
+        src="/talk.mp4"
         autoPlay
         loop
         muted
+        playsInline
+        webkit-playsinline="true"
+        disablePictureInPicture
         style={{
           width: "100%",
           height: "100%",
           objectFit: "cover",
           borderRadius: fullscreen ? 0 : "50%",
           background: fullscreen ? "#000" : undefined,
-          transition: 'all 0.2s'
+          transition: 'opacity 0.2s',
+          opacity: isTalking ? 1 : 0,
+          position: 'absolute',
+          top: 0,
+          left: 0,
+          zIndex: 2
+        }}
+      />
+      <video
+        ref={standVideoRef}
+        src="/stand.mp4"
+        autoPlay
+        loop
+        muted
+        playsInline
+        webkit-playsinline="true"
+        disablePictureInPicture
+        style={{
+          width: "100%",
+          height: "100%",
+          objectFit: "cover",
+          borderRadius: fullscreen ? 0 : "50%",
+          background: fullscreen ? "#000" : undefined,
+          transition: 'opacity 0.2s',
+          opacity: isTalking ? 0 : 1,
+          position: 'absolute',
+          top: 0,
+          left: 0,
+          zIndex: 1
         }}
       />
     </div>
