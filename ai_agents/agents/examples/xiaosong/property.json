@@ -1,0 +1,270 @@
+{
+  "_ten": {
+    "predefined_graphs": [
+      {
+        "name": "xiaosong_voice_assistant",
+        "auto_start": true,
+        "nodes": [
+          {
+            "type": "extension",
+            "name": "agora_rtc",
+            "addon": "agora_rtc",
+            "extension_group": "default",
+            "property": {
+              "app_id": "${env:AGORA_APP_ID}",
+              "app_certificate": "${env:AGORA_APP_CERTIFICATE|}",
+              "channel": "ten_agent_test",
+              "stream_id": 1234,
+              "remote_stream_id": 123,
+              "subscribe_audio": true,
+              "publish_audio": true,
+              "publish_data": true,
+              "enable_agora_asr": false,
+              "agora_asr_vendor_name": "microsoft",
+              "agora_asr_language": "en-US",
+              "agora_asr_vendor_key": "${env:AZURE_STT_KEY|}",
+              "agora_asr_vendor_region": "${env:AZURE_STT_REGION|}",
+              "agora_asr_session_control_file_path": "session_control.conf"
+            }
+          },
+          {
+            "type": "extension",
+            "name": "stt",
+            "addon": "deepgram_asr_python",
+            "extension_group": "stt",
+            "property": {
+              "language": "zh-CN",
+              "api_key": "ea97ec4789dd61e4c31d1a3e7810e42a24cb6422",
+              "sample_rate": 16000,
+              "model": "nova-2"
+            }
+          },
+          {
+            "type": "extension",
+            "name": "llm",
+            "addon": "openai_chatgpt_python",
+            "extension_group": "chatgpt",
+            "property": {
+              "max_memory_length": 10,
+              "api_key": "sk-4686f9e1ce874d7e8564602e4b11d806",
+              "greeting": "嘿！我是小松，很高兴认识你！有什么我能帮到你的吗？",
+              "frequency_penalty": 0.9,
+              "base_url": "https://api.deepseek.com/v1",
+              "prompt": "你是小松，一个友好、专业、有幽默感的AI助手。你的性格阳光开朗，说话简洁有力。你是男性AI，语气稳重但不失亲和力。",
+              "model": "deepseek-chat",
+              "max_tokens": 512
+            }
+          },
+          {
+            "type": "extension",
+            "name": "tts",
+            "addon": "fish_audio_tts",
+            "extension_group": "tts",
+            "property": {
+              "api_key": "${env:FISH_AUDIO_TTS_KEY}",
+              "base_url": "https://api.fish.audio",
+              "model_id": "faccba1a8ac54016bcfc02761285e67f",
+              "optimize_streaming_latency": true,
+              "request_timeout_seconds": 30
+            }
+          },
+          {
+            "type": "extension",
+            "name": "interrupt_detector",
+            "addon": "interrupt_detector_python",
+            "extension_group": "default",
+            "property": {}
+          },
+          {
+            "type": "extension",
+            "name": "message_collector",
+            "addon": "message_collector",
+            "extension_group": "transcriber",
+            "property": {}
+          },
+          {
+            "type": "extension",
+            "name": "weatherapi_tool_python",
+            "addon": "weatherapi_tool_python",
+            "extension_group": "default",
+            "property": {
+              "api_key": "${env:WEATHERAPI_API_KEY|}"
+            }
+          }
+        ],
+        "connections": [
+          {
+            "extension": "agora_rtc",
+            "cmd": [
+              {
+                "name": "on_user_joined",
+                "dest": [
+                  {
+                    "extension": "llm"
+                  }
+                ]
+              },
+              {
+                "name": "on_user_left",
+                "dest": [
+                  {
+                    "extension": "llm"
+                  }
+                ]
+              },
+              {
+                "name": "on_connection_failure",
+                "dest": [
+                  {
+                    "extension": "llm"
+                  }
+                ]
+              }
+            ],
+            "audio_frame": [
+              {
+                "name": "pcm_frame",
+                "dest": [
+                  {
+                    "extension": "stt"
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "extension": "stt",
+            "data": [
+              {
+                "name": "text_data",
+                "dest": [
+                  {
+                    "extension": "interrupt_detector"
+                  },
+                  {
+                    "extension": "message_collector"
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "extension": "llm",
+            "cmd": [
+              {
+                "name": "flush",
+                "dest": [
+                  {
+                    "extension": "tts"
+                  }
+                ]
+              },
+              {
+                "name": "tool_call",
+                "dest": [
+                  {
+                    "extension": "weatherapi_tool_python"
+                  }
+                ]
+              }
+            ],
+            "data": [
+              {
+                "name": "text_data",
+                "dest": [
+                  {
+                    "extension": "tts"
+                  },
+                  {
+                    "extension": "message_collector"
+                  }
+                ]
+              },
+              {
+                "name": "content_data",
+                "dest": [
+                  {
+                    "extension": "message_collector"
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "extension": "message_collector",
+            "data": [
+              {
+                "name": "data",
+                "dest": [
+                  {
+                    "extension": "agora_rtc"
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "extension": "tts",
+            "cmd": [
+              {
+                "name": "flush",
+                "dest": [
+                  {
+                    "extension": "agora_rtc"
+                  }
+                ]
+              }
+            ],
+            "audio_frame": [
+              {
+                "name": "pcm_frame",
+                "dest": [
+                  {
+                    "extension": "agora_rtc"
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "extension": "interrupt_detector",
+            "cmd": [
+              {
+                "name": "flush",
+                "dest": [
+                  {
+                    "extension": "llm"
+                  }
+                ]
+              }
+            ],
+            "data": [
+              {
+                "name": "text_data",
+                "dest": [
+                  {
+                    "extension": "llm"
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "extension": "weatherapi_tool_python",
+            "cmd": [
+              {
+                "name": "tool_register",
+                "dest": [
+                  {
+                    "extension": "llm"
+                  }
+                ]
+              }
+            ]
+          }
+        ]
+      }
+    ],
+    "log_level": 3
+  }
+}

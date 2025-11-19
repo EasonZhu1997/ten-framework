@@ -12,7 +12,7 @@ import (
 	"log"
 	"os"
 
-	"ten_framework/ten"
+	"ten_framework/ten_runtime"
 )
 
 type appConfig struct {
@@ -20,13 +20,13 @@ type appConfig struct {
 }
 
 type defaultApp struct {
-	ten.DefaultApp
+	ten_runtime.DefaultApp
 
 	cfg *appConfig
 }
 
 func (p *defaultApp) OnConfigure(
-	tenEnv ten.TenEnv,
+	tenEnv ten_runtime.TenEnv,
 ) {
 	// Using the default property.json if not specified.
 	if len(p.cfg.PropertyFilePath) > 0 {
@@ -41,7 +41,7 @@ func (p *defaultApp) OnConfigure(
 }
 
 func startAppBlocking(cfg *appConfig) {
-	appInstance, err := ten.NewApp(&defaultApp{
+	appInstance, err := ten_runtime.NewApp(&defaultApp{
 		cfg: cfg,
 	})
 	if err != nil {
@@ -51,7 +51,7 @@ func startAppBlocking(cfg *appConfig) {
 	appInstance.Run(true)
 	appInstance.Wait()
 
-	ten.EnsureCleanupWhenProcessExit()
+	ten_runtime.EnsureCleanupWhenProcessExit()
 }
 
 func setDefaultLog() {

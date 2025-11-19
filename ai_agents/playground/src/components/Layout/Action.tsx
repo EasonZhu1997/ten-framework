@@ -66,13 +66,26 @@ export default function Action(props: { className?: string }) {
       toast.success("Agent disconnected");
       stopPing();
     } else {
-      const selectedGraph = graphList.find(
+      // 硬编码小松配置，不依赖 graphList
+      let selectedGraph = graphList.find(
         (graph) => graph.uuid === selectedGraphId
       );
+
+      // 如果找不到，使用硬编码的小松配置
       if (!selectedGraph) {
-        toast.error("Please select a graph first");
-        setLoading(false);
-        return;
+        if (selectedGraphId === "xiaosong_voice_assistant" || !selectedGraphId) {
+          selectedGraph = {
+            name: "xiaosong_voice_assistant",
+            uuid: "xiaosong_voice_assistant",
+            autoStart: true,
+            nodes: [],
+            connections: [],
+          };
+        } else {
+          toast.error("Please select a graph first");
+          setLoading(false);
+          return;
+        }
       }
 
       const res = await apiStartService({

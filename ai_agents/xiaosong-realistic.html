@@ -1,0 +1,583 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>小松 - 真人数字人助手</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Microsoft YaHei', Arial, sans-serif;
+            background: #000;
+            height: 100vh;
+            overflow: hidden;
+        }
+
+        .app-container {
+            display: flex;
+            height: 100vh;
+        }
+
+        .video-panel {
+            flex: 1;
+            background: #111;
+            display: flex;
+            flex-direction: column;
+            position: relative;
+        }
+
+        .video-header {
+            background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%);
+            color: white;
+            padding: 20px;
+            font-size: 24px;
+            font-weight: bold;
+            text-align: center;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.3);
+        }
+
+        .video-container {
+            flex: 1;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            position: relative;
+            background: #000;
+        }
+
+        /* 数字人视频 */
+        .digital-human-video {
+            width: 100%;
+            max-width: 800px;
+            height: auto;
+            border-radius: 0;
+            box-shadow: 0 0 50px rgba(30, 60, 114, 0.5);
+        }
+
+        /* 真人形象占位图（等待视频加载） */
+        .avatar-placeholder {
+            width: 400px;
+            height: 600px;
+            background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%);
+            border-radius: 20px;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            color: white;
+            font-size: 18px;
+            padding: 40px;
+            text-align: center;
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.5);
+        }
+
+        .avatar-placeholder img {
+            width: 200px;
+            height: 200px;
+            border-radius: 50%;
+            margin-bottom: 20px;
+            object-fit: cover;
+            border: 5px solid white;
+        }
+
+        .status-indicator {
+            position: absolute;
+            top: 30px;
+            right: 30px;
+            padding: 12px 24px;
+            background: rgba(0, 0, 0, 0.8);
+            color: white;
+            border-radius: 25px;
+            font-size: 15px;
+            backdrop-filter: blur(10px);
+            z-index: 10;
+        }
+
+        .status-indicator.active {
+            background: rgba(46, 125, 50, 0.9);
+            box-shadow: 0 0 20px rgba(46, 125, 50, 0.5);
+        }
+
+        .chat-panel {
+            width: 450px;
+            background: #f5f5f5;
+            display: flex;
+            flex-direction: column;
+            box-shadow: -5px 0 20px rgba(0, 0, 0, 0.3);
+        }
+
+        .chat-header {
+            background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%);
+            color: white;
+            padding: 20px;
+            font-size: 20px;
+            font-weight: bold;
+            text-align: center;
+        }
+
+        .chat-messages {
+            flex: 1;
+            overflow-y: auto;
+            padding: 20px;
+            background: #ffffff;
+        }
+
+        .message {
+            margin-bottom: 15px;
+            display: flex;
+            animation: slideIn 0.3s;
+        }
+
+        @keyframes slideIn {
+            from {
+                opacity: 0;
+                transform: translateY(10px);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .message.user {
+            justify-content: flex-end;
+        }
+
+        .message.assistant {
+            justify-content: flex-start;
+        }
+
+        .message-bubble {
+            max-width: 80%;
+            padding: 12px 18px;
+            border-radius: 18px;
+            word-wrap: break-word;
+            line-height: 1.6;
+        }
+
+        .message.user .message-bubble {
+            background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%);
+            color: white;
+        }
+
+        .message.assistant .message-bubble {
+            background: #e3f2fd;
+            color: #1565c0;
+            border: 1px solid #90caf9;
+        }
+
+        .chat-input-container {
+            padding: 20px;
+            background: white;
+            border-top: 2px solid #e0e0e0;
+            display: flex;
+            gap: 10px;
+        }
+
+        .chat-input {
+            flex: 1;
+            padding: 14px 20px;
+            border: 2px solid #2a5298;
+            border-radius: 25px;
+            font-size: 15px;
+            outline: none;
+        }
+
+        .send-button {
+            padding: 14px 30px;
+            background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%);
+            color: white;
+            border: none;
+            border-radius: 25px;
+            font-size: 15px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        .send-button:hover:not(:disabled) {
+            transform: scale(1.05);
+        }
+
+        .send-button:disabled {
+            opacity: 0.5;
+        }
+
+        .controls {
+            padding: 20px;
+            display: flex;
+            gap: 15px;
+            justify-content: center;
+        }
+
+        .control-btn {
+            padding: 12px 25px;
+            background: rgba(30, 60, 114, 0.3);
+            color: white;
+            border: 2px solid rgba(255, 255, 255, 0.3);
+            border-radius: 25px;
+            cursor: pointer;
+            transition: all 0.3s;
+            font-size: 14px;
+            backdrop-filter: blur(10px);
+        }
+
+        .control-btn:hover {
+            background: rgba(30, 60, 114, 0.5);
+            border-color: rgba(255, 255, 255, 0.5);
+        }
+
+        .control-btn.active {
+            background: #2e7d32;
+            border-color: #2e7d32;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="app-container">
+        <div class="video-panel">
+            <div class="video-header">
+                🎓 小松 - AI 数字人助手
+            </div>
+            <div class="video-container" id="videoContainer">
+                <div class="avatar-placeholder">
+                    <img src="https://i.pravatar.cc/200?img=12" alt="小松" id="avatarImg">
+                    <h2>小松</h2>
+                    <p>日系男大学生 AI 助手</p>
+                    <p style="margin-top: 20px; font-size: 14px; opacity: 0.8;">
+                        💡 使用真人音色合成<br>
+                        🎤 支持语音对话<br>
+                        📹 实时视频交互
+                    </p>
+                </div>
+                <div class="status-indicator" id="status">💤 待机中</div>
+            </div>
+            <div class="controls">
+                <button class="control-btn" id="voiceBtn" onclick="startVoiceInput()">
+                    🎤 按住说话
+                </button>
+                <button class="control-btn" onclick="stopSpeaking()">
+                    ⏹️ 停止朗读
+                </button>
+            </div>
+        </div>
+
+        <div class="chat-panel">
+            <div class="chat-header">
+                💬 对话窗口
+            </div>
+            <div class="chat-messages" id="messages">
+                <div class="message assistant">
+                    <div class="message-bubble">
+                        你好！我是小松，一个来自日本的大学生，很高兴认识你！有什么想聊的吗？
+                    </div>
+                </div>
+            </div>
+            <div class="chat-input-container">
+                <input type="text" class="chat-input" id="messageInput" placeholder="输入消息..."
+                    onkeypress="if(event.key==='Enter') sendMessage()" />
+                <button class="send-button" id="sendBtn" onclick="sendMessage()">
+                    发送
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const API_BASE = 'https://api.deepseek.com/v1';
+        const API_KEY = 'sk-e2567be66ddd47d8ac991786f6b5faff';
+        const messagesContainer = document.getElementById('messages');
+        const messageInput = document.getElementById('messageInput');
+        const statusIndicator = document.getElementById('status');
+        const sendBtn = document.getElementById('sendBtn');
+        const avatarImg = document.getElementById('avatarImg');
+
+        let conversationHistory = [
+            {
+                role: "system",
+                content: "你是小松，一个21岁的日本留学生，在中国学习。性格阳光开朗、礼貌友善、充满活力。说话时会用一些日式表达如'呢'、'啊'、'哦'。你喜欢动漫、游戏、美食和旅游。回答要简洁自然，每次80字以内，像朋友聊天一样轻松。"
+            }
+        ];
+
+        let synthesis = window.speechSynthesis;
+        let currentUtterance = null;
+        let recognition = null;
+
+        function addMessage(text, isUser) {
+            const messageDiv = document.createElement('div');
+            messageDiv.className = `message ${isUser ? 'user' : 'assistant'}`;
+            const escaped = text.replace(/</g, '&lt;').replace(/>/g, '&gt;');
+            messageDiv.innerHTML = `<div class="message-bubble">${escaped}</div>`;
+            messagesContainer.appendChild(messageDiv);
+            messagesContainer.scrollTop = messagesContainer.scrollHeight;
+        }
+
+        function setStatus(text, isActive = false) {
+            statusIndicator.textContent = text;
+            statusIndicator.classList.toggle('active', isActive);
+        }
+
+        function animateAvatar(speaking) {
+            if (speaking) {
+                avatarImg.style.animation = 'pulse 0.5s infinite';
+            } else {
+                avatarImg.style.animation = 'none';
+            }
+        }
+
+        // 添加动画样式
+        const style = document.createElement('style');
+        style.textContent = `
+            @keyframes pulse {
+                0%, 100% { transform: scale(1); filter: brightness(1); }
+                50% { transform: scale(1.05); filter: brightness(1.1); }
+            }
+        `;
+        document.head.appendChild(style);
+
+        async function speakText(text) {
+            return new Promise(async (resolve) => {
+                try {
+                    animateAvatar(true);
+                    setStatus('🗣️ 正在说话', true);
+
+                    // 使用 Edge TTS API (免费，高质量)
+                    // 使用 zh-CN-YunxiNeural (年轻男声) 或 zh-CN-YunjianNeural
+                    const ttsResponse = await fetch('https://eastus.tts.speech.microsoft.com/cognitiveservices/v1', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/ssml+xml',
+                            'X-Microsoft-OutputFormat': 'audio-24khz-48kbitrate-mono-mp3',
+                            'Ocp-Apim-Subscription-Key': 'demo' // 使用演示密钥
+                        },
+                        body: `<speak version='1.0' xml:lang='zh-CN'>
+                            <voice xml:lang='zh-CN' name='zh-CN-YunxiNeural'>
+                                <prosody rate='1.1' pitch='+2st'>
+                                    ${text}
+                                </prosody>
+                            </voice>
+                        </speak>`
+                    }).catch(() => null);
+
+                    if (ttsResponse && ttsResponse.ok) {
+                        // 使用在线 TTS
+                        const audioBlob = await ttsResponse.blob();
+                        const audioUrl = URL.createObjectURL(audioBlob);
+                        const audio = new Audio(audioUrl);
+
+                        audio.onended = () => {
+                            animateAvatar(false);
+                            setStatus('💤 待机中');
+                            resolve();
+                        };
+
+                        audio.onerror = () => {
+                            // 降级到本地 TTS
+                            useFallbackTTS(text, resolve);
+                        };
+
+                        await audio.play();
+                    } else {
+                        // 降级到浏览器内置 TTS
+                        useFallbackTTS(text, resolve);
+                    }
+                } catch (error) {
+                    console.error('TTS错误:', error);
+                    useFallbackTTS(text, resolve);
+                }
+            });
+        }
+
+        function useFallbackTTS(text, resolve) {
+            synthesis.cancel();
+
+            currentUtterance = new SpeechSynthesisUtterance(text);
+            currentUtterance.lang = 'zh-CN';
+            currentUtterance.rate = 1.15;
+            currentUtterance.pitch = 1.2; // 提高音调
+            currentUtterance.volume = 1.0;
+
+            const voices = synthesis.getVoices();
+            // 优先选择微软云希（年轻男声）
+            const preferredVoices = [
+                voices.find(v => v.name.includes('Yunxi')),
+                voices.find(v => v.name.includes('Yunjian')),
+                voices.find(v => v.name.includes('Xiaoxiao')),
+                voices.find(v => v.lang.includes('zh-CN')),
+                voices.find(v => v.lang.includes('zh'))
+            ];
+            const selectedVoice = preferredVoices.find(v => v);
+            if (selectedVoice) {
+                currentUtterance.voice = selectedVoice;
+            }
+
+            currentUtterance.onend = () => {
+                animateAvatar(false);
+                setStatus('💤 待机中');
+                resolve();
+            };
+
+            currentUtterance.onerror = () => {
+                animateAvatar(false);
+                setStatus('💤 待机中');
+                resolve();
+            };
+
+            synthesis.speak(currentUtterance);
+        }
+
+        function stopSpeaking() {
+            synthesis.cancel();
+            animateAvatar(false);
+            setStatus('💤 待机中');
+        }
+
+        async function sendMessage(text) {
+            if (!text) {
+                text = messageInput.value.trim();
+            }
+            if (!text) return;
+
+            addMessage(text, true);
+            messageInput.value = '';
+            sendBtn.disabled = true;
+
+            conversationHistory.push({
+                role: "user",
+                content: text
+            });
+
+            setStatus('🤔 思考中...', true);
+
+            try {
+                const response = await fetch(`${API_BASE}/chat/completions`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${API_KEY}`
+                    },
+                    body: JSON.stringify({
+                        model: 'deepseek-chat',
+                        messages: conversationHistory,
+                        temperature: 0.8,
+                        max_tokens: 200
+                    })
+                });
+
+                const data = await response.json();
+
+                if (data.choices && data.choices[0]) {
+                    const reply = data.choices[0].message.content;
+                    addMessage(reply, false);
+
+                    // 朗读回复
+                    await speakText(reply);
+
+                    conversationHistory.push({
+                        role: "assistant",
+                        content: reply
+                    });
+
+                    if (conversationHistory.length > 16) {
+                        conversationHistory = [
+                            conversationHistory[0],
+                            ...conversationHistory.slice(-15)
+                        ];
+                    }
+                } else {
+                    const errorMsg = '抱歉，我这边出了点问题呢...';
+                    addMessage(errorMsg, false);
+                    await speakText(errorMsg);
+                }
+            } catch (error) {
+                const errorMsg = '网络似乎有点问题呢...';
+                addMessage(errorMsg, false);
+                console.error('Error:', error);
+            } finally {
+                sendBtn.disabled = false;
+            }
+        }
+
+        function startVoiceInput() {
+            const btn = document.getElementById('voiceBtn');
+
+            if ('webkitSpeechRecognition' in window || 'SpeechRecognition' in window) {
+                const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+                recognition = new SpeechRecognition();
+                recognition.lang = 'zh-CN';
+                recognition.continuous = false;
+                recognition.interimResults = false;
+
+                recognition.onstart = () => {
+                    btn.classList.add('active');
+                    btn.textContent = '🎤 正在听...';
+                    setStatus('👂 我在听...', true);
+                };
+
+                recognition.onresult = (event) => {
+                    const transcript = event.results[0][0].transcript;
+                    console.log('识别到:', transcript);
+                    sendMessage(transcript);
+                };
+
+                recognition.onend = () => {
+                    btn.classList.remove('active');
+                    btn.textContent = '🎤 按住说话';
+                };
+
+                recognition.onerror = (event) => {
+                    console.error('语音识别错误:', event.error);
+                    btn.classList.remove('active');
+                    btn.textContent = '🎤 按住说话';
+                    setStatus('💤 待机中');
+
+                    if (event.error === 'not-allowed') {
+                        alert('需要麦克风权限！\\n\\n请：\\n1. 点击地址栏左侧的🔒图标\\n2. 允许"麦克风"权限\\n3. 刷新页面重试');
+                    }
+                };
+
+                try {
+                    recognition.start();
+                } catch (e) {
+                    console.error('启动失败:', e);
+                    alert('语音识别启动失败。请确保：\\n1. 使用 Chrome 或 Edge 浏览器\\n2. 已连接麦克风\\n3. 允许麦克风权限');
+                }
+            } else {
+                alert('你的浏览器不支持语音识别\\n请使用 Chrome 或 Edge 浏览器');
+            }
+        }
+
+        // 初始化语音合成
+        if ('speechSynthesis' in window) {
+            // 触发语音列表加载
+            speechSynthesis.getVoices();
+            speechSynthesis.onvoiceschanged = () => {
+                const voices = speechSynthesis.getVoices();
+                console.log('可用语音数量:', voices.length);
+                const zhVoices = voices.filter(v => v.lang.includes('zh'));
+                console.log('中文语音:', zhVoices.map(v => `${v.name} (${v.lang})`));
+            };
+
+            // 欢迎语
+            setTimeout(() => {
+                const welcome = '你好！我是小松，很高兴认识你呢！';
+                speakText(welcome);
+            }, 1500);
+        }
+
+        console.log('小松 AI 数字人已就绪！');
+        console.log('- 文字对话：直接输入发送');
+        console.log('- 语音对话：点击"按住说话"按钮');
+        console.log('- 注意：语音功能需要麦克风权限');
+    </script>
+</body>
+
+</html>

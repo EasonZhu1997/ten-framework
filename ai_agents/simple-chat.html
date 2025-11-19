@@ -1,0 +1,267 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>小松 AI 助手</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Microsoft YaHei', Arial, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .chat-container {
+            width: 90%;
+            max-width: 800px;
+            height: 80vh;
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.3);
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+
+        .chat-header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 20px;
+            font-size: 24px;
+            font-weight: bold;
+            text-align: center;
+        }
+
+        .chat-messages {
+            flex: 1;
+            overflow-y: auto;
+            padding: 20px;
+            background: #f5f5f5;
+        }
+
+        .message {
+            margin-bottom: 15px;
+            display: flex;
+            animation: fadeIn 0.3s;
+        }
+
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+                transform: translateY(10px);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .message.user {
+            justify-content: flex-end;
+        }
+
+        .message.assistant {
+            justify-content: flex-start;
+        }
+
+        .message-bubble {
+            max-width: 70%;
+            padding: 12px 18px;
+            border-radius: 18px;
+            word-wrap: break-word;
+        }
+
+        .message.user .message-bubble {
+            background: #667eea;
+            color: white;
+        }
+
+        .message.assistant .message-bubble {
+            background: white;
+            color: #333;
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+        }
+
+        .chat-input-container {
+            padding: 20px;
+            background: white;
+            border-top: 1px solid #eee;
+            display: flex;
+            gap: 10px;
+        }
+
+        .chat-input {
+            flex: 1;
+            padding: 12px 18px;
+            border: 2px solid #667eea;
+            border-radius: 25px;
+            font-size: 16px;
+            outline: none;
+        }
+
+        .send-button {
+            padding: 12px 30px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            border-radius: 25px;
+            font-size: 16px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: transform 0.2s;
+        }
+
+        .send-button:hover {
+            transform: scale(1.05);
+        }
+
+        .send-button:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        .loading {
+            text-align: center;
+            color: #999;
+            font-style: italic;
+            padding: 10px;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="chat-container">
+        <div class="chat-header">
+            🤖 小松 AI 助手
+        </div>
+        <div class="chat-messages" id="messages">
+            <div class="message assistant">
+                <div class="message-bubble">
+                    嘿！我是小松，很高兴认识你！有什么我能帮到你的吗？
+                </div>
+            </div>
+        </div>
+        <div class="chat-input-container">
+            <input type="text" class="chat-input" id="messageInput" placeholder="输入消息..."
+                onkeypress="if(event.key==='Enter') sendMessage()" />
+            <button class="send-button" onclick="sendMessage()">发送</button>
+        </div>
+    </div>
+
+    <script>
+        const API_BASE = 'https://api.deepseek.com/v1';
+        const API_KEY = 'sk-e2567be66ddd47d8ac991786f6b5faff';
+        const messagesContainer = document.getElementById('messages');
+        const messageInput = document.getElementById('messageInput');
+
+        let conversationHistory = [
+            {
+                role: "system",
+                content: "你是小松，一个友好、专业、有幽默感的AI助手。你的性格阳光开朗，说话简洁有力。你是男性AI，语气稳重但不失亲和力。"
+            }
+        ];
+
+        function addMessage(text, isUser) {
+            const messageDiv = document.createElement('div');
+            messageDiv.className = `message ${isUser ? 'user' : 'assistant'}`;
+            messageDiv.innerHTML = `<div class="message-bubble">${text}</div>`;
+            messagesContainer.appendChild(messageDiv);
+            messagesContainer.scrollTop = messagesContainer.scrollHeight;
+        }
+
+        function showLoading() {
+            const loadingDiv = document.createElement('div');
+            loadingDiv.className = 'loading';
+            loadingDiv.id = 'loading';
+            loadingDiv.textContent = '小松正在思考...';
+            messagesContainer.appendChild(loadingDiv);
+            messagesContainer.scrollTop = messagesContainer.scrollHeight;
+        }
+
+        function hideLoading() {
+            const loading = document.getElementById('loading');
+            if (loading) loading.remove();
+        }
+
+        async function sendMessage() {
+            const text = messageInput.value.trim();
+            if (!text) return;
+
+            // 显示用户消息
+            addMessage(text, true);
+            messageInput.value = '';
+
+            // 添加到历史
+            conversationHistory.push({
+                role: "user",
+                content: text
+            });
+
+            showLoading();
+
+            try {
+                // 调用 DeepSeek API
+                const response = await fetch(`${API_BASE}/chat/completions`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${API_KEY}`
+                    },
+                    body: JSON.stringify({
+                        model: 'deepseek-chat',
+                        messages: conversationHistory,
+                        temperature: 0.7,
+                        max_tokens: 2000
+                    })
+                });
+
+                const data = await response.json();
+                hideLoading();
+
+                if (data.choices && data.choices[0]) {
+                    const reply = data.choices[0].message.content;
+                    addMessage(reply, false);
+
+                    // 添加到历史
+                    conversationHistory.push({
+                        role: "assistant",
+                        content: reply
+                    });
+
+                    // 限制历史长度
+                    if (conversationHistory.length > 20) {
+                        conversationHistory = [
+                            conversationHistory[0], // 保留 system prompt
+                            ...conversationHistory.slice(-19)
+                        ];
+                    }
+                } else {
+                    addMessage('抱歉，我遇到了一些问题，请稍后再试。', false);
+                }
+            } catch (error) {
+                hideLoading();
+                addMessage('网络错误，请检查连接。错误: ' + error.message, false);
+                console.error('Error:', error);
+            }
+        }
+
+        // 页面加载完成提示
+        console.log('小松 AI 助手已就绪！');
+        console.log('- 使用 DeepSeek API');
+        console.log('- 支持文字对话');
+        console.log('- 完全不依赖 Agora RTM');
+    </script>
+</body>
+
+</html>

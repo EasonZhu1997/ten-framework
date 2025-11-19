@@ -59,12 +59,13 @@ export class RtmManager extends AGEventEmitter<IRtmEvents> {
     await rtm.login({ token })
     try {
       // subscribe message channel(will be created automatically)
+      // 禁用高级功能以兼容基础 RTM 套餐
       const subscribeResult = await rtm.subscribe(channel, {
         withMessage: true,
-        withPresence: true,
+        withPresence: false,  // 禁用 Presence
         beQuiet: false,
-        withMetadata: true,
-        withLock: true,
+        withMetadata: false,  // 禁用 Metadata
+        withLock: false,      // 禁用 Lock
       })
       console.log("[RTM] Subscribe Message Channel success!: ", subscribeResult)
 

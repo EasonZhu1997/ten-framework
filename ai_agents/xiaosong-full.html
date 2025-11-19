@@ -1,0 +1,565 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>小松 AI 数字人助手</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Microsoft YaHei', Arial, sans-serif;
+            background: #1a1a2e;
+            height: 100vh;
+            overflow: hidden;
+        }
+
+        .app-container {
+            display: flex;
+            height: 100vh;
+        }
+
+        /* 左侧视频区域 */
+        .video-panel {
+            flex: 1;
+            background: #16213e;
+            display: flex;
+            flex-direction: column;
+            position: relative;
+        }
+
+        .video-header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 20px;
+            font-size: 24px;
+            font-weight: bold;
+            text-align: center;
+        }
+
+        .video-container {
+            flex: 1;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+            position: relative;
+        }
+
+        .avatar-video {
+            width: 100%;
+            max-width: 640px;
+            height: auto;
+            border-radius: 20px;
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.5);
+            background: #0f3460;
+        }
+
+        .status-indicator {
+            position: absolute;
+            top: 30px;
+            right: 30px;
+            padding: 10px 20px;
+            background: rgba(0, 0, 0, 0.7);
+            color: white;
+            border-radius: 20px;
+            font-size: 14px;
+        }
+
+        .status-indicator.active {
+            background: rgba(0, 200, 0, 0.7);
+        }
+
+        .avatar-placeholder {
+            width: 400px;
+            height: 400px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-size: 120px;
+            color: white;
+            animation: pulse 2s infinite;
+        }
+
+        @keyframes pulse {
+
+            0%,
+            100% {
+                transform: scale(1);
+            }
+
+            50% {
+                transform: scale(1.05);
+            }
+        }
+
+        .speaking {
+            animation: speaking 0.5s infinite;
+        }
+
+        @keyframes speaking {
+
+            0%,
+            100% {
+                transform: scale(1);
+                box-shadow: 0 0 0 0 rgba(102, 126, 234, 0.7);
+            }
+
+            50% {
+                transform: scale(1.1);
+                box-shadow: 0 0 0 20px rgba(102, 126, 234, 0);
+            }
+        }
+
+        /* 右侧聊天区域 */
+        .chat-panel {
+            width: 400px;
+            background: white;
+            display: flex;
+            flex-direction: column;
+            border-left: 2px solid #667eea;
+        }
+
+        .chat-header {
+            background: #667eea;
+            color: white;
+            padding: 15px;
+            font-size: 18px;
+            font-weight: bold;
+        }
+
+        .chat-messages {
+            flex: 1;
+            overflow-y: auto;
+            padding: 20px;
+            background: #f5f5f5;
+        }
+
+        .message {
+            margin-bottom: 15px;
+            display: flex;
+            animation: slideIn 0.3s;
+        }
+
+        @keyframes slideIn {
+            from {
+                opacity: 0;
+                transform: translateX(20px);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateX(0);
+            }
+        }
+
+        .message.user {
+            justify-content: flex-end;
+        }
+
+        .message.assistant {
+            justify-content: flex-start;
+        }
+
+        .message-bubble {
+            max-width: 80%;
+            padding: 10px 15px;
+            border-radius: 15px;
+            word-wrap: break-word;
+        }
+
+        .message.user .message-bubble {
+            background: #667eea;
+            color: white;
+        }
+
+        .message.assistant .message-bubble {
+            background: white;
+            color: #333;
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+        }
+
+        .chat-input-container {
+            padding: 15px;
+            background: white;
+            border-top: 1px solid #eee;
+            display: flex;
+            gap: 10px;
+        }
+
+        .chat-input {
+            flex: 1;
+            padding: 10px 15px;
+            border: 2px solid #667eea;
+            border-radius: 20px;
+            font-size: 14px;
+            outline: none;
+        }
+
+        .send-button {
+            padding: 10px 25px;
+            background: #667eea;
+            color: white;
+            border: none;
+            border-radius: 20px;
+            font-size: 14px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        .send-button:hover:not(:disabled) {
+            background: #764ba2;
+            transform: translateY(-2px);
+        }
+
+        .send-button:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        .controls {
+            padding: 15px;
+            background: rgba(255, 255, 255, 0.1);
+            display: flex;
+            gap: 10px;
+            justify-content: center;
+        }
+
+        .control-btn {
+            padding: 10px 20px;
+            background: rgba(255, 255, 255, 0.2);
+            color: white;
+            border: 2px solid white;
+            border-radius: 20px;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        .control-btn:hover {
+            background: rgba(255, 255, 255, 0.3);
+        }
+
+        .control-btn.active {
+            background: #4CAF50;
+            border-color: #4CAF50;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="app-container">
+        <!-- 左侧：视频数字人 -->
+        <div class="video-panel">
+            <div class="video-header">
+                小松 AI 数字人
+            </div>
+            <div class="video-container">
+                <div class="avatar-placeholder" id="avatar">
+                    🤖
+                </div>
+                <div class="status-indicator" id="status">待机中</div>
+            </div>
+            <div class="controls">
+                <button class="control-btn" id="voiceBtn" onclick="toggleVoice()">
+                    🎤 语音输入
+                </button>
+                <button class="control-btn" id="videoBtn" onclick="toggleVideo()">
+                    📹 开启摄像头
+                </button>
+            </div>
+        </div>
+
+        <!-- 右侧：聊天区域 -->
+        <div class="chat-panel">
+            <div class="chat-header">
+                💬 对话窗口
+            </div>
+            <div class="chat-messages" id="messages">
+                <div class="message assistant">
+                    <div class="message-bubble">
+                        嘿！我是小松，很高兴认识你！有什么我能帮到你的吗？
+                    </div>
+                </div>
+            </div>
+            <div class="chat-input-container">
+                <input type="text" class="chat-input" id="messageInput" placeholder="输入消息..."
+                    onkeypress="if(event.key==='Enter') sendMessage()" />
+                <button class="send-button" id="sendBtn" onclick="sendMessage()">发送</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const API_BASE = 'https://api.deepseek.com/v1';
+        const API_KEY = 'sk-e2567be66ddd47d8ac991786f6b5faff';
+        const messagesContainer = document.getElementById('messages');
+        const messageInput = document.getElementById('messageInput');
+        const avatar = document.getElementById('avatar');
+        const statusIndicator = document.getElementById('status');
+        const sendBtn = document.getElementById('sendBtn');
+
+        let conversationHistory = [
+            {
+                role: "system",
+                content: "你是小松，一个友好、专业、有幽默感的AI助手。你的性格阳光开朗，说话简洁有力，喜欢用生动的比喻。你是男性AI，语气稳重但不失亲和力。回答要简洁明了，每次回复控制在100字以内。"
+            }
+        ];
+
+        let isVoiceEnabled = false;
+        let isVideoEnabled = false;
+        let recognition = null;
+        let synthesis = window.speechSynthesis;
+
+        function addMessage(text, isUser) {
+            const messageDiv = document.createElement('div');
+            messageDiv.className = `message ${isUser ? 'user' : 'assistant'}`;
+            messageDiv.innerHTML = `<div class="message-bubble">${escapeHtml(text)}</div>`;
+            messagesContainer.appendChild(messageDiv);
+            messagesContainer.scrollTop = messagesContainer.scrollHeight;
+        }
+
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+
+        function setAvatarSpeaking(speaking) {
+            if (speaking) {
+                avatar.classList.add('speaking');
+                statusIndicator.textContent = '正在说话...';
+                statusIndicator.classList.add('active');
+            } else {
+                avatar.classList.remove('speaking');
+                statusIndicator.textContent = '待机中';
+                statusIndicator.classList.remove('active');
+            }
+        }
+
+        function speakText(text) {
+            if ('speechSynthesis' in window) {
+                // 停止当前播放
+                synthesis.cancel();
+
+                const utterance = new SpeechSynthesisUtterance(text);
+                utterance.lang = 'zh-CN';
+                utterance.rate = 1.0;
+                utterance.pitch = 0.9; // 稍微低沉的男声
+
+                utterance.onstart = () => {
+                    setAvatarSpeaking(true);
+                };
+
+                utterance.onend = () => {
+                    setAvatarSpeaking(false);
+                };
+
+                synthesis.speak(utterance);
+            }
+        }
+
+        async function sendMessage(text) {
+            if (!text) {
+                text = messageInput.value.trim();
+            }
+            if (!text) return;
+
+            // 显示用户消息
+            addMessage(text, true);
+            messageInput.value = '';
+            sendBtn.disabled = true;
+
+            // 添加到历史
+            conversationHistory.push({
+                role: "user",
+                content: text
+            });
+
+            // 设置状态为思考中
+            statusIndicator.textContent = '思考中...';
+            statusIndicator.classList.add('active');
+
+            try {
+                // 调用 DeepSeek API
+                const response = await fetch(`${API_BASE}/chat/completions`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${API_KEY}`
+                    },
+                    body: JSON.stringify({
+                        model: 'deepseek-chat',
+                        messages: conversationHistory,
+                        temperature: 0.7,
+                        max_tokens: 500
+                    })
+                });
+
+                const data = await response.json();
+
+                if (data.choices && data.choices[0]) {
+                    const reply = data.choices[0].message.content;
+                    addMessage(reply, false);
+
+                    // 语音播报回复
+                    speakText(reply);
+
+                    // 添加到历史
+                    conversationHistory.push({
+                        role: "assistant",
+                        content: reply
+                    });
+
+                    // 限制历史长度
+                    if (conversationHistory.length > 20) {
+                        conversationHistory = [
+                            conversationHistory[0],
+                            ...conversationHistory.slice(-19)
+                        ];
+                    }
+                } else {
+                    const errorMsg = '抱歉，我遇到了一些问题。' + (data.error?.message || '');
+                    addMessage(errorMsg, false);
+                    statusIndicator.textContent = '错误';
+                }
+            } catch (error) {
+                addMessage('网络错误: ' + error.message, false);
+                console.error('Error:', error);
+                statusIndicator.textContent = '错误';
+            } finally {
+                sendBtn.disabled = false;
+                if (statusIndicator.textContent !== '正在说话...') {
+                    statusIndicator.textContent = '待机中';
+                    statusIndicator.classList.remove('active');
+                }
+            }
+        }
+
+        function toggleVoice() {
+            const btn = document.getElementById('voiceBtn');
+
+            if (!isVoiceEnabled) {
+                // 启动语音识别
+                if ('webkitSpeechRecognition' in window || 'SpeechRecognition' in window) {
+                    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+                    recognition = new SpeechRecognition();
+                    recognition.lang = 'zh-CN';
+                    recognition.continuous = false;
+                    recognition.interimResults = false;
+
+                    recognition.onstart = () => {
+                        btn.classList.add('active');
+                        btn.textContent = '🎤 正在听...';
+                        statusIndicator.textContent = '正在听...';
+                        statusIndicator.classList.add('active');
+                    };
+
+                    recognition.onresult = (event) => {
+                        const transcript = event.results[0][0].transcript;
+                        sendMessage(transcript);
+                    };
+
+                    recognition.onend = () => {
+                        btn.classList.remove('active');
+                        btn.textContent = '🎤 语音输入';
+                        if (statusIndicator.textContent === '正在听...') {
+                            statusIndicator.textContent = '待机中';
+                            statusIndicator.classList.remove('active');
+                        }
+                    };
+
+                    recognition.onerror = (event) => {
+                        alert('语音识别错误: ' + event.error);
+                        btn.classList.remove('active');
+                        btn.textContent = '🎤 语音输入';
+                    };
+
+                    recognition.start();
+                    isVoiceEnabled = true;
+                } else {
+                    alert('你的浏览器不支持语音识别功能');
+                }
+            } else {
+                if (recognition) {
+                    recognition.stop();
+                    isVoiceEnabled = false;
+                }
+            }
+        }
+
+        async function toggleVideo() {
+            const btn = document.getElementById('videoBtn');
+            const videoContainer = document.querySelector('.video-container');
+
+            if (!isVideoEnabled) {
+                try {
+                    const stream = await navigator.mediaDevices.getUserMedia({
+                        video: true,
+                        audio: false
+                    });
+
+                    // 移除占位符
+                    const placeholder = document.querySelector('.avatar-placeholder');
+                    if (placeholder) placeholder.remove();
+
+                    // 创建视频元素
+                    let video = document.getElementById('userVideo');
+                    if (!video) {
+                        video = document.createElement('video');
+                        video.id = 'userVideo';
+                        video.className = 'avatar-video';
+                        video.autoplay = true;
+                        video.muted = true;
+                        videoContainer.appendChild(video);
+                    }
+
+                    video.srcObject = stream;
+                    btn.classList.add('active');
+                    btn.textContent = '📹 关闭摄像头';
+                    isVideoEnabled = true;
+
+                } catch (error) {
+                    alert('无法访问摄像头: ' + error.message);
+                }
+            } else {
+                const video = document.getElementById('userVideo');
+                if (video && video.srcObject) {
+                    video.srcObject.getTracks().forEach(track => track.stop());
+                    video.remove();
+                }
+
+                // 恢复占位符
+                if (!document.querySelector('.avatar-placeholder')) {
+                    const placeholder = document.createElement('div');
+                    placeholder.className = 'avatar-placeholder';
+                    placeholder.id = 'avatar';
+                    placeholder.textContent = '🤖';
+                    videoContainer.appendChild(placeholder);
+                }
+
+                btn.classList.remove('active');
+                btn.textContent = '📹 开启摄像头';
+                isVideoEnabled = false;
+            }
+        }
+
+        // 初始化
+        console.log('小松 AI 数字人助手已就绪！');
+        console.log('功能：');
+        console.log('- ✅ 文字对话');
+        console.log('- ✅ 语音识别输入');
+        console.log('- ✅ 语音播报回复');
+        console.log('- ✅ 视频交互');
+        console.log('- ✅ 数字人动画效果');
+    </script>
+</body>
+
+</html>

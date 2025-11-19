@@ -1,0 +1,540 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>椿子 AI 数字人助手</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Microsoft YaHei', Arial, sans-serif;
+            background: #1a1a2e;
+            height: 100vh;
+            overflow: hidden;
+        }
+
+        .app-container {
+            display: flex;
+            height: 100vh;
+        }
+
+        .video-panel {
+            flex: 1;
+            background: linear-gradient(135deg, #ffeaa7, #fdcb6e, #fab1a0);
+            display: flex;
+            flex-direction: column;
+            position: relative;
+        }
+
+        .video-header {
+            background: rgba(255, 107, 107, 0.9);
+            color: white;
+            padding: 20px;
+            font-size: 28px;
+            font-weight: bold;
+            text-align: center;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.3);
+        }
+
+        .video-container {
+            flex: 1;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            position: relative;
+        }
+
+        .avatar-placeholder {
+            width: 400px;
+            height: 600px;
+            background: linear-gradient(135deg, #ff9a9e 0%, #fecfef 100%);
+            border-radius: 20px;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            color: white;
+            padding: 40px;
+            text-align: center;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+        }
+
+        .avatar-placeholder img {
+            width: 250px;
+            height: 250px;
+            border-radius: 50%;
+            margin-bottom: 30px;
+            object-fit: cover;
+            border: 6px solid white;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+        }
+
+        .avatar-placeholder h2 {
+            font-size: 36px;
+            margin-bottom: 15px;
+            text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.2);
+        }
+
+        .avatar-placeholder p {
+            font-size: 16px;
+            opacity: 0.95;
+            line-height: 1.8;
+        }
+
+        .speaking img {
+            animation: speakPulse 0.4s infinite;
+        }
+
+        @keyframes speakPulse {
+
+            0%,
+            100% {
+                transform: scale(1);
+                filter: brightness(1);
+            }
+
+            50% {
+                transform: scale(1.08);
+                filter: brightness(1.15);
+            }
+        }
+
+        .status-indicator {
+            position: absolute;
+            top: 30px;
+            right: 30px;
+            padding: 12px 24px;
+            background: rgba(255, 107, 107, 0.9);
+            color: white;
+            border-radius: 25px;
+            font-size: 15px;
+            backdrop-filter: blur(10px);
+            z-index: 10;
+            box-shadow: 0 4px 15px rgba(255, 107, 107, 0.4);
+        }
+
+        .status-indicator.active {
+            background: rgba(255, 71, 87, 1);
+            animation: glow 1s infinite;
+        }
+
+        @keyframes glow {
+
+            0%,
+            100% {
+                box-shadow: 0 4px 15px rgba(255, 107, 107, 0.4);
+            }
+
+            50% {
+                box-shadow: 0 4px 25px rgba(255, 71, 87, 0.8);
+            }
+        }
+
+        .chat-panel {
+            width: 450px;
+            background: #fff;
+            display: flex;
+            flex-direction: column;
+            box-shadow: -5px 0 20px rgba(0, 0, 0, 0.3);
+        }
+
+        .chat-header {
+            background: linear-gradient(135deg, #ff9a9e 0%, #fecfef 100%);
+            color: white;
+            padding: 20px;
+            font-size: 20px;
+            font-weight: bold;
+            text-align: center;
+        }
+
+        .chat-messages {
+            flex: 1;
+            overflow-y: auto;
+            padding: 20px;
+            background: #fafafa;
+        }
+
+        .message {
+            margin-bottom: 15px;
+            display: flex;
+            animation: slideIn 0.3s;
+        }
+
+        @keyframes slideIn {
+            from {
+                opacity: 0;
+                transform: translateY(10px);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .message.user {
+            justify-content: flex-end;
+        }
+
+        .message.assistant {
+            justify-content: flex-start;
+        }
+
+        .message-bubble {
+            max-width: 80%;
+            padding: 12px 18px;
+            border-radius: 18px;
+            word-wrap: break-word;
+            line-height: 1.6;
+        }
+
+        .message.user .message-bubble {
+            background: linear-gradient(135deg, #ff9a9e 0%, #fecfef 100%);
+            color: white;
+        }
+
+        .message.assistant .message-bubble {
+            background: white;
+            color: #ff6b81;
+            border: 2px solid #ffb3ba;
+        }
+
+        .chat-input-container {
+            padding: 20px;
+            background: white;
+            border-top: 2px solid #ffe0e0;
+            display: flex;
+            gap: 10px;
+        }
+
+        .chat-input {
+            flex: 1;
+            padding: 14px 20px;
+            border: 2px solid #ff9a9e;
+            border-radius: 25px;
+            font-size: 15px;
+            outline: none;
+        }
+
+        .send-button {
+            padding: 14px 30px;
+            background: linear-gradient(135deg, #ff9a9e 0%, #fecfef 100%);
+            color: white;
+            border: none;
+            border-radius: 25px;
+            font-size: 15px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        .send-button:hover:not(:disabled) {
+            transform: scale(1.05);
+        }
+
+        .send-button:disabled {
+            opacity: 0.5;
+        }
+
+        .controls {
+            padding: 20px;
+            display: flex;
+            gap: 15px;
+            justify-content: center;
+        }
+
+        .control-btn {
+            padding: 12px 25px;
+            background: rgba(255, 107, 107, 0.3);
+            color: white;
+            border: 2px solid rgba(255, 255, 255, 0.5);
+            border-radius: 25px;
+            cursor: pointer;
+            transition: all 0.3s;
+            font-size: 14px;
+            backdrop-filter: blur(10px);
+        }
+
+        .control-btn:hover {
+            background: rgba(255, 107, 107, 0.5);
+        }
+
+        .control-btn.active {
+            background: #ff6b81;
+            border-color: #ff6b81;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="app-container">
+        <div class="video-panel">
+            <div class="video-header">
+                🌸 椿子 AI 数字人
+            </div>
+            <div class="video-container" id="videoContainer">
+                <div class="avatar-placeholder" id="avatar">
+                    <img src="https://i.pravatar.cc/250?img=45" alt="椿子" id="avatarImg">
+                    <h2>椿子</h2>
+                    <p>你的贴心 AI 伙伴</p>
+                    <p style="margin-top: 20px; font-size: 14px; opacity: 0.9;">
+                        💝 温柔体贴的陪伴<br>
+                        🎤 甜美女声<br>
+                        💬 随时倾听你的心声
+                    </p>
+                </div>
+                <div class="status-indicator" id="status">💤 待机中</div>
+            </div>
+            <div class="controls">
+                <button class="control-btn" id="voiceBtn" onclick="startVoiceInput()">
+                    🎤 点击说话
+                </button>
+                <button class="control-btn" onclick="stopSpeaking()">
+                    ⏹️ 停止朗读
+                </button>
+            </div>
+        </div>
+
+        <div class="chat-panel">
+            <div class="chat-header">
+                💕 和椿子聊天
+            </div>
+            <div class="chat-messages" id="messages">
+                <div class="message assistant">
+                    <div class="message-bubble">
+                        你好呀～我是椿子，我可以陪你一起度过无聊的时光，想聊些什么呢？
+                    </div>
+                </div>
+            </div>
+            <div class="chat-input-container">
+                <input type="text" class="chat-input" id="messageInput" placeholder="和椿子聊聊天吧..."
+                    onkeypress="if(event.key==='Enter') sendMessage()" />
+                <button class="send-button" id="sendBtn" onclick="sendMessage()">
+                    发送
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const API_BASE = 'https://api.deepseek.com/v1';
+        const API_KEY = 'sk-e2567be66ddd47d8ac991786f6b5faff';
+        const messagesContainer = document.getElementById('messages');
+        const messageInput = document.getElementById('messageInput');
+        const statusIndicator = document.getElementById('status');
+        const sendBtn = document.getElementById('sendBtn');
+        const avatar = document.getElementById('avatar');
+        const avatarImg = document.getElementById('avatarImg');
+
+        let conversationHistory = [
+            {
+                role: "system",
+                content: "你是椿子，一个温柔体贴、善解人意的AI伙伴。你的性格温暖可爱，说话亲切自然，像个贴心的朋友。你善于倾听，会用温柔的话语安慰和陪伴用户。回答要简洁温暖，每次控制在100字以内，多用'呢'、'哦'、'呀'等可爱的语气词。"
+            }
+        ];
+
+        let synthesis = window.speechSynthesis;
+        let currentUtterance = null;
+        let recognition = null;
+
+        function addMessage(text, isUser) {
+            const messageDiv = document.createElement('div');
+            messageDiv.className = `message ${isUser ? 'user' : 'assistant'}`;
+            const escaped = text.replace(/</g, '&lt;').replace(/>/g, '&gt;');
+            messageDiv.innerHTML = `<div class="message-bubble">${escaped}</div>`;
+            messagesContainer.appendChild(messageDiv);
+            messagesContainer.scrollTop = messagesContainer.scrollHeight;
+        }
+
+        function setStatus(text, isActive = false) {
+            statusIndicator.textContent = text;
+            statusIndicator.classList.toggle('active', isActive);
+        }
+
+        function animateAvatar(speaking) {
+            avatar.classList.toggle('speaking', speaking);
+        }
+
+        async function speakText(text) {
+            return new Promise((resolve) => {
+                synthesis.cancel();
+
+                currentUtterance = new SpeechSynthesisUtterance(text);
+                currentUtterance.lang = 'zh-CN';
+                currentUtterance.rate = 1.0; // 正常语速，温柔
+                currentUtterance.pitch = 1.3; // 较高音调，甜美女声
+                currentUtterance.volume = 1.0;
+
+                // 获取最好的女声
+                const voices = synthesis.getVoices();
+                const preferredVoices = [
+                    voices.find(v => v.lang.includes('zh') && v.name.includes('Xiaoxiao')), // 微软晓晓（甜美女声）
+                    voices.find(v => v.lang.includes('zh') && v.name.includes('Xiaoyi')), // 微软晓伊
+                    voices.find(v => v.lang.includes('zh') && v.name.includes('Female')),
+                    voices.find(v => v.lang.includes('zh') && !v.name.includes('Male'))
+                ];
+                const selectedVoice = preferredVoices.find(v => v);
+                if (selectedVoice) {
+                    currentUtterance.voice = selectedVoice;
+                    console.log('使用语音:', selectedVoice.name);
+                }
+
+                currentUtterance.onstart = () => {
+                    animateAvatar(true);
+                    setStatus('💕 椿子在说话', true);
+                };
+
+                currentUtterance.onend = () => {
+                    animateAvatar(false);
+                    setStatus('💤 待机中');
+                    resolve();
+                };
+
+                currentUtterance.onerror = () => {
+                    animateAvatar(false);
+                    setStatus('💤 待机中');
+                    resolve();
+                };
+
+                synthesis.speak(currentUtterance);
+            });
+        }
+
+        function stopSpeaking() {
+            synthesis.cancel();
+            animateAvatar(false);
+            setStatus('💤 待机中');
+        }
+
+        async function sendMessage(text) {
+            if (!text) {
+                text = messageInput.value.trim();
+            }
+            if (!text) return;
+
+            addMessage(text, true);
+            messageInput.value = '';
+            sendBtn.disabled = true;
+
+            conversationHistory.push({
+                role: "user",
+                content: text
+            });
+
+            setStatus('💭 椿子在思考', true);
+
+            try {
+                const response = await fetch(`${API_BASE}/chat/completions`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${API_KEY}`
+                    },
+                    body: JSON.stringify({
+                        model: 'deepseek-chat',
+                        messages: conversationHistory,
+                        temperature: 0.9,
+                        max_tokens: 300
+                    })
+                });
+
+                const data = await response.json();
+
+                if (data.choices && data.choices[0]) {
+                    const reply = data.choices[0].message.content;
+                    addMessage(reply, false);
+
+                    // 椿子用甜美女声朗读
+                    await speakText(reply);
+
+                    conversationHistory.push({
+                        role: "assistant",
+                        content: reply
+                    });
+
+                    if (conversationHistory.length > 20) {
+                        conversationHistory = [
+                            conversationHistory[0],
+                            ...conversationHistory.slice(-19)
+                        ];
+                    }
+                } else {
+                    const errorMsg = '椿子这边好像出了点小问题呢...';
+                    addMessage(errorMsg, false);
+                    await speakText(errorMsg);
+                }
+            } catch (error) {
+                const errorMsg = '网络好像有点问题呢...';
+                addMessage(errorMsg, false);
+                console.error('Error:', error);
+            } finally {
+                sendBtn.disabled = false;
+            }
+        }
+
+        function startVoiceInput() {
+            const btn = document.getElementById('voiceBtn');
+
+            if ('webkitSpeechRecognition' in window || 'SpeechRecognition' in window) {
+                const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+                recognition = new SpeechRecognition();
+                recognition.lang = 'zh-CN';
+                recognition.continuous = false;
+
+                recognition.onstart = () => {
+                    btn.classList.add('active');
+                    btn.textContent = '🎤 椿子在听...';
+                    setStatus('👂 椿子在听你说', true);
+                };
+
+                recognition.onresult = (event) => {
+                    const transcript = event.results[0][0].transcript;
+                    sendMessage(transcript);
+                };
+
+                recognition.onend = () => {
+                    btn.classList.remove('active');
+                    btn.textContent = '🎤 点击说话';
+                };
+
+                recognition.onerror = (event) => {
+                    console.error('语音识别错误:', event.error);
+                    btn.classList.remove('active');
+                    btn.textContent = '🎤 点击说话';
+                    setStatus('💤 待机中');
+
+                    if (event.error === 'not-allowed') {
+                        alert('需要麦克风权限哦～\\n\\n请在浏览器设置中允许麦克风访问');
+                    }
+                };
+
+                recognition.start();
+            } else {
+                alert('你的浏览器不支持语音识别呢\\n建议使用 Chrome 或 Edge 浏览器～');
+            }
+        }
+
+        // 初始化
+        if ('speechSynthesis' in window) {
+            speechSynthesis.getVoices();
+            speechSynthesis.onvoiceschanged = () => {
+                console.log('语音已加载');
+            };
+
+            // 椿子的欢迎语
+            setTimeout(() => {
+                speakText('你好呀～我是椿子，我可以陪你一起度过无聊的时光，想聊些什么呢？');
+            }, 1500);
+        }
+
+        console.log('椿子 AI 数字人已就绪！');
+    </script>
+</body>
+
+</html>

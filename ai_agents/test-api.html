@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <title>测试小松 API</title>
+    <meta charset="UTF-8">
+</head>
+
+<body>
+    <h1>小松 API 测试页面</h1>
+    <div id="result"></div>
+
+    <script>
+        async function testAPI() {
+            const resultDiv = document.getElementById('result');
+
+            try {
+                // 测试 graphs API
+                const response = await fetch('http://localhost:8080/graphs');
+                const data = await response.json();
+
+                resultDiv.innerHTML = `
+                    <h2>API 响应:</h2>
+                    <pre>${JSON.stringify(data, null, 2)}</pre>
+
+                    <h2>智能体列表:</h2>
+                    <ul>
+                        ${data.data.map(g => `<li>${g.name} (${g.uuid})</li>`).join('')}
+                    </ul>
+
+                    <p style="color: green; font-weight: bold;">
+                    ✅ API 工作正常！小松可用！
+                    </p>
+
+                    <p>
+                    <a href="http://localhost:3000" target="_blank" style="font-size: 20px;">
+                        点击这里打开 Playground →
+                    </a>
+                    </p>
+
+                    <p style="color: red;">
+                    如果 Playground 还是没有选项，请：<br>
+                    1. 按 Ctrl+Shift+Delete 清除浏览器缓存<br>
+                    2. 或在无痕窗口打开<br>
+                    3. 或按F12，在 Application → Local Storage → 清除 localhost:3000 的数据
+                    </p>
+                `;
+            } catch (error) {
+                resultDiv.innerHTML = `<p style="color: red;">错误: ${error}</p>`;
+            }
+        }
+
+        testAPI();
+    </script>
+</body>
+
+</html>
